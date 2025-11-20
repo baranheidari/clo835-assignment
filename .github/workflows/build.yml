@@ -1,31 +1,47 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Images to ECR
 
 on:
   push:
-    branches: [ "main" ]
-    paths:
-      - "Dockerfile"
-      - "app.py"
-      - "requirements.txt"
-      - ".trigger"
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Log in to DockerHub
-        uses: docker/login-action@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
 
-      - name: Build image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/clo835-app:latest .
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Push image
+      - name: Build and push APP image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: webapp-repo
+          IMAGE_TAG: latest
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/clo835-app:latest
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG ./app
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+
+      - name: Build and push MYSQL image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: mysql-repo
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG ./mysql
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
