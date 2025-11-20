@@ -2,5 +2,4 @@
 This file is created to trigger GitHub Actions.
 Trigger workflow test
 Test trigger after YAML fix.
-
-
+Trigger after deleting AWS_ACCOUNT_ID.
